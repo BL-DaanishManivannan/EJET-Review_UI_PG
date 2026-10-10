@@ -1,4 +1,28 @@
 :root {
+    --bg-dark: #f8f9fa;
+    --bg-panel: #ffffff;
+    --bg-elevated: #f1f3f5;
+    --text-primary: #212529;
+    --text-secondary: #495057;
+    --accent-primary: #6366f1;
+    --accent-hover: #4f46e5;
+    --border-color: #dee2e6;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --font-main: 'Inter', sans-serif;
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+
+    --bg-code: #f1f3f5;
+    --text-code: #212529;
+    --text-curl: #d97706;
+    --input-bg: #ffffff;
+    --overlay-bg: rgba(255, 255, 255, 0.85);
+}
+
+body.dark-theme {
     --bg-dark: #0d1117;
     --bg-panel: #161b22;
     --bg-elevated: #21262d;
@@ -14,6 +38,12 @@
     --radius-sm: 6px;
     --radius-md: 8px;
     --radius-lg: 12px;
+
+    --bg-code: #0d1117;
+    --text-code: #e6edf3;
+    --text-curl: #e5c07b;
+    --input-bg: #0d1117;
+    --overlay-bg: rgba(22, 27, 34, 0.85);
 }
 
 * {
@@ -198,7 +228,7 @@ select:focus, input[type="text"]:focus, textarea:focus {
     width: 42px;
     padding: 1rem 0.2rem;
     cursor: pointer;
-    background-color: #11141a;
+    background: var(--bg-dark);
 }
 
 .results-panel.collapsed:hover {
@@ -430,10 +460,10 @@ textarea {
     font-family: 'Consolas', 'Courier New', monospace;
     font-size: 0.88rem;
     line-height: 1.55;
-    background: #0d1117;
+    background: var(--bg-code);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
-    color: #e6edf3;
+    color: var(--text-code);
 }
 
 #question-text {
@@ -512,7 +542,7 @@ textarea {
     line-height: 1.55;
     min-height: 280px;
     resize: vertical;
-    background: #0d1117;
+    background: var(--bg-code);
     color: #cbd5e1;
     transition: min-height 0.2s ease;
 }
@@ -594,7 +624,7 @@ textarea {
     top: 8px;
     right: 8px;
     z-index: 10;
-    background: rgba(22, 27, 34, 0.85);
+    background: var(--overlay-bg);
     backdrop-filter: blur(4px);
 }
 
@@ -747,7 +777,7 @@ button {
     font-family: 'Consolas', 'Courier New', monospace;
     font-size: 0.82rem;
     line-height: 1.5;
-    background: #0d1117;
+    background: var(--bg-code);
 }
 
 .console-log {
@@ -947,20 +977,20 @@ progress.metric-bad::-webkit-progress-value { background-color: #ef4444; }
 }
 
 .json-code {
-    background-color: #0d1117;
+    background: var(--bg-code);
     padding: 1rem;
     border-radius: var(--radius-sm);
     border: 1px solid var(--border-color);
     overflow-x: auto;
     font-size: 0.8rem;
-    color: #e6edf3;
+    color: var(--text-code);
     display: block;
     max-height: 480px;
     overflow-y: auto;
 }
 
 .curl-code {
-    color: #e5c07b !important;
+    color: var(--text-curl) !important;
     white-space: pre-wrap !important;
     word-break: break-all;
     line-height: 1.6;

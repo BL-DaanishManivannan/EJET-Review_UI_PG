@@ -1397,5 +1397,22 @@ function renderEvaluationResult(totalDuration = "—") {
     els.resultsContent.appendChild(clone);
 }
 
+// Theme Toggle Logic
+(function() {
+    const themeBtn = document.getElementById('theme-toggle');
+    const savedTheme = localStorage.getItem('app-theme') || 'light';
+    
+    if (savedTheme === 'dark') {
+        document.body.classList.add('dark-theme');
+    }
+    
+    if (themeBtn) {
+        themeBtn.addEventListener('click', () => {
+            const isDark = document.body.classList.toggle('dark-theme');
+            localStorage.setItem('app-theme', isDark ? 'dark' : 'light');
+        });
+    }
+})();
+
 // Run init on load
 document.addEventListener('DOMContentLoaded', init);
