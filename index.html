@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Evaluation Playground</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="top-bar">
+            <div class="logo">Eval<span class="highlight">Playground</span></div>
+            <div class="global-controls">
+                <div class="control-group">
+                    <label>Prompt</label>
+                    <select id="prompt-select">
+                        <option value="code-eval">Code Evaluation</option>
+                        <option value="concept-eval">Concept Evaluation</option>
+                    </select>
+                </div>
+                <div class="control-group model-control-group">
+                    <label>Model</label>
+                    <select id="model-select">
+                        <option value="gemini-2.5-flash" selected>Gemini 2.5 Flash</option>
+                        <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                        <option value="gemini-3.1-pro">Gemini 3.1 Pro</option>
+                        <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+                        <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite</option>
+                        <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
+                        <option value="custom">Custom Model...</option>
+                    </select>
+                    <input type="text" id="custom-model-input" class="hidden custom-model-input" placeholder="e.g. gemini-2.5-flash-preview-0514" title="Paste model attribute from Google AI Studio docs">
+                </div>
+                <div class="control-group">
+                    <label>Language</label>
+                    <select id="language-select">
+                        <option value="Auto Detect">Auto Detect</option>
+                        <option value="Java">Java</option>
+                        <option value="Python">Python</option>
+                        <option value="JavaScript">JavaScript</option>
+                    </select>
+                </div>
+                <div class="control-group checkbox-group">
+                    <input type="checkbox" id="token-flag">
+                    <label for="token-flag">Compute Tokens</label>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-layout" id="main-layout">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <h3>Question Type</h3>
+                <div class="radio-list">
+                    <label class="radio-label"><input type="radio" name="q-type" value="Coding" checked> <span>Coding</span></label>
+                    <label class="radio-label"><input type="radio" name="q-type" value="Concept"> <span>Concept</span></label>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="content-area">
+                <!-- Top Toolbar: Tabs + Action Buttons Above Question ID -->
+                <div class="toolbar-row">
+                    <div class="tabs-container">
+                        <div class="tabs" id="tabs-list">
+                            <!-- Tabs rendered dynamically -->
+                        </div>
+                        <button id="add-tab-btn" class="icon-btn" title="Add Test Case">+ Add</button>
+                    </div>
+                    
+                    <div class="top-action-bar">
+                        <button id="clear-all-btn" class="secondary-btn" title="Reset all fields to fresh default values">Clear All</button>
+                        <button id="load-sample-btn" class="secondary-btn" title="Load a complete ready-to-test sample">Load Sample</button>
+                        <button id="import-json-btn" class="secondary-btn" title="Import JSON payload">Import JSON</button>
+                        <button id="generate-json-btn" class="secondary-btn" title="View generated JSON payload">View JSON</button>
+                        <button id="run-eval-btn" class="primary-btn">
+                            <span class="btn-spinner hidden"></span>
+                            <span class="btn-text">Run Evaluation</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="tab-content">
+                    <!-- Neat, compact Question ID row -->
+                    <div class="metadata-row">
+                        <div class="compact-field">
+                            <label for="question-id">Question ID</label>
+                            <input type="text" id="question-id" placeholder="e.g., question-1">
+                        </div>
+                    </div>
+
+                    <div class="field textarea-field">
+                        <div class="field-label-row">
+                            <label>Question</label>
+                            <div class="field-actions">
+                                <button id="question-instructions-btn" class="clear-btn instruction-trigger-btn" title="Add specific instructions/criteria for this question">
+                                    <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 5v14M5 12h14"/></svg>
+                                    <span id="instruction-btn-label">+ Instruction</span>
+                                </button>
+                                <button class="clear-btn" data-target="question-text" title="Clear Question">
+                                    <svg class="clear-icon" viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                    <span>Clear</span>
+                                </button>
+                                <button class="copy-btn" data-target="question-text" title="Copy Question">
+                                    <svg class="copy-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                    <span>Copy</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="copy-wrapper">
+                            <textarea id="question-text" placeholder="Enter the question here..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="field textarea-field">
+                        <div class="field-label-row">
+                            <label>Candidate Answer / Code</label>
+                            <div class="field-actions">
+                                <button class="clear-btn" data-target="answer-text" title="Clear Code/Answer">
+                                    <svg class="clear-icon" viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                    <span>Clear</span>
+                                </button>
+                                <button class="copy-btn" data-target="answer-text" title="Copy Code/Answer">
+                                    <svg class="copy-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                    <span>Copy</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="copy-wrapper">
+                            <textarea id="answer-text" placeholder="Enter the candidate answer or code here..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Spacious, Adjustable System Prompt Section -->
+                    <div class="field textarea-field system-prompt-section">
+                        <div class="system-prompt-header">
+                            <div class="system-prompt-title-group">
+                                <label>System Prompt</label>
+                                <span id="prompt-lines-badge" class="line-count-badge">20 lines</span>
+                            </div>
+                            <div class="system-prompt-controls">
+                                <button id="auto-fit-prompt-btn" class="icon-btn-small" title="Toggle full height auto-fit">Auto-Fit</button>
+                                <button class="clear-btn" data-target="system-prompt-text" title="Clear System Prompt">
+                                    <svg class="clear-icon" viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                    <span>Clear</span>
+                                </button>
+                                <button class="copy-btn" data-target="system-prompt-text" title="Copy System Prompt">
+                                    <svg class="copy-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                    <span>Copy</span>
+                                </button>
+                                <span id="prompt-source-badge" class="prompt-badge default">Default Prompt</span>
+                                <button id="reset-prompt-btn" class="icon-btn-small hidden" title="Reset to default prompt">Reset</button>
+                            </div>
+                        </div>
+                        <div class="copy-wrapper">
+                            <textarea id="system-prompt-text" placeholder="Evaluation prompt sent to the LLM..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Collapsible Console Drawer at Footer -->
+                <div class="console-drawer collapsed" id="console-drawer">
+                    <div class="console-header" id="console-header-toggle">
+                        <div class="console-title">
+                            <span class="console-arrow" id="console-arrow">▲</span>
+                            <span>Console Output</span>
+                            <span id="console-count" class="badge-count">0</span>
+                        </div>
+                        <div class="console-actions">
+                            <button id="clear-console-btn" class="icon-btn-small" title="Clear Console">Clear</button>
+                        </div>
+                    </div>
+                    <div id="console-output" class="console-output"></div>
+                </div>
+            </main>
+
+            <!-- Results Panel (Collapsed by default, expands to 480px width) -->
+            <aside class="results-panel collapsed" id="results-panel">
+                <!-- Collapsed vertical indicator bar -->
+                <div class="results-collapsed-indicator" id="results-collapsed-indicator" title="Click to expand Evaluation Results">
+                    <span class="indicator-icon">◀</span>
+                    <span class="indicator-label">Evaluation Results</span>
+                </div>
+
+                <div class="results-panel-header">
+                    <h2>Evaluation Result</h2>
+                    <button id="toggle-results-panel-btn" class="icon-btn-small panel-toggle-btn" title="Collapse Results Panel">Collapse</button>
+                </div>
+                
+                <div class="results-tabs">
+                    <button class="results-tab active" data-target="tab-score">Score & Feedback</button>
+                    <button class="results-tab" data-target="tab-curl">cURL</button>
+                    <button class="results-tab" data-target="tab-request">Request</button>
+                    <button class="results-tab" data-target="tab-response">Response</button>
+                </div>
+                
+                <div id="tab-score" class="results-tab-content">
+                    <div id="results-content" class="empty-state">
+                        <div>Ready for evaluation</div>
+                        <div class="empty-subtitle">Click "Run Evaluation" or "Load Sample" to test.</div>
+                    </div>
+                </div>
+                
+                <div id="tab-curl" class="results-tab-content hidden">
+                    <div class="code-container">
+                        <button class="copy-btn overlay-copy" data-target="curl-display" title="Copy cURL Command">
+                            <svg class="copy-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            <span>Copy cURL</span>
+                        </button>
+                        <pre><code id="curl-display" class="json-code curl-code">Run evaluation or view payload to see cURL command...</code></pre>
+                    </div>
+                </div>
+
+                <div id="tab-request" class="results-tab-content hidden">
+                    <div class="code-container">
+                        <button class="copy-btn overlay-copy" data-target="request-display" title="Copy Request JSON">
+                            <svg class="copy-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            <span>Copy</span>
+                        </button>
+                        <pre><code id="request-display" class="json-code">Run evaluation to see request...</code></pre>
+                    </div>
+                </div>
+                
+                <div id="tab-response" class="results-tab-content hidden">
+                    <div class="code-container">
+                        <button class="copy-btn overlay-copy" data-target="response-display" title="Copy Response JSON">
+                            <svg class="copy-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            <span>Copy</span>
+                        </button>
+                        <pre><code id="response-display" class="json-code">Run evaluation to see response...</code></pre>
+                    </div>
+                </div>
+                
+                <!-- Template for actual results (Supports positive & negative formatting) -->
+                <template id="results-template">
+                    <div class="result-details fade-in">
+                        <div class="result-status-row">
+                            <span class="badge" id="eval-status-badge">● Completed</span>
+                            <span class="time-tag" id="eval-time-tag">1.8s</span>
+                        </div>
+                        
+                        <div class="score-card" id="eval-score-card">
+                            <div class="score-label">Overall Evaluation Score</div>
+                            <div class="score" id="eval-score-val"><strong>8.5</strong> <span class="max-score">/ 10</span></div>
+                        </div>
+                        
+                        <div class="metrics">
+                            <div class="metric">
+                                <div class="metric-header">
+                                    <span>Completeness</span>
+                                    <span id="metric-completeness-val">8/10</span>
+                                </div>
+                                <progress id="metric-completeness-prog" value="8" max="10"></progress>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-header">
+                                    <span>Code Quality</span>
+                                    <span id="metric-quality-val">7/10</span>
+                                </div>
+                                <progress id="metric-quality-prog" value="7" max="10"></progress>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-header">
+                                    <span>Approach</span>
+                                    <span id="metric-approach-val">9/10</span>
+                                </div>
+                                <progress id="metric-approach-prog" value="9" max="10"></progress>
+                            </div>
+                        </div>
+                        
+                        <div class="feedback">
+                            <div class="feedback-header">
+                                <h3>Evaluation Critique & Feedback</h3>
+                                <button class="copy-btn" data-target="eval-feedback-text" title="Copy Feedback">
+                                    <svg class="copy-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                    <span>Copy</span>
+                                </button>
+                            </div>
+                            <div id="eval-feedback-text" class="feedback-box">
+                                Feedback details...
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+            </aside>
+        </div>
+    </div>
+    
+    <!-- View Generated JSON Payload Modal -->
+    <div id="json-modal-overlay" class="modal-overlay hidden fade-in">
+        <div class="modal-content modal-content-large">
+            <div class="modal-header">
+                <h3>Generated Request Payload</h3>
+                <div class="field-actions">
+                    <button class="copy-btn" data-target="json-display" title="Copy JSON Payload">
+                        <svg class="copy-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        <span>Copy JSON</span>
+                    </button>
+                </div>
+            </div>
+            <p>This is the complete JSON payload constructed from your current inputs, ready to be sent to the evaluation API.</p>
+            <div class="code-container">
+                <pre><code id="json-display" class="json-code"></code></pre>
+            </div>
+            <div class="modal-actions">
+                <button id="close-json-modal-btn" class="primary-btn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import JSON Modal -->
+    <div id="import-modal-overlay" class="modal-overlay hidden fade-in">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Import JSON Payload</h3>
+                <div class="field-actions">
+                    <button class="clear-btn" data-target="import-json-textarea" title="Clear JSON Input">
+                        <svg class="clear-icon" viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        <span>Clear</span>
+                    </button>
+                    <button class="copy-btn" data-target="import-json-textarea" title="Copy Input JSON">
+                        <svg class="copy-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        <span>Copy</span>
+                    </button>
+                </div>
+            </div>
+            <p>Paste an existing evaluation request payload below to populate the fields.</p>
+            <div class="copy-wrapper">
+                <textarea id="import-json-textarea" placeholder="Paste JSON here..."></textarea>
+            </div>
+            <div class="modal-actions">
+                <button id="close-import-btn" class="secondary-btn">Cancel</button>
+                <button id="apply-import-btn" class="primary-btn">Import Data</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Question Instructions Modal -->
+    <div id="instruction-modal-overlay" class="modal-overlay hidden fade-in">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Question Evaluation Instructions</h3>
+                <div class="field-actions">
+                    <button class="clear-btn" data-target="question-instructions-textarea" title="Clear Instructions">
+                        <svg class="clear-icon" viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        <span>Clear</span>
+                    </button>
+                    <button class="copy-btn" data-target="question-instructions-textarea" title="Copy Instructions">
+                        <svg class="copy-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        <span>Copy</span>
+                    </button>
+                </div>
+            </div>
+            <p>Provide specific evaluation criteria, test constraints, or rubric points for evaluating this question.</p>
+            <div class="copy-wrapper">
+                <textarea id="question-instructions-textarea" placeholder="e.g. Focus on edge cases like null input and time complexity O(N). Deduct points if global variables are used."></textarea>
+            </div>
+            <div class="modal-actions">
+                <button id="close-instruction-btn" class="secondary-btn">Cancel</button>
+                <button id="save-instruction-btn" class="primary-btn">Save Instructions</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
