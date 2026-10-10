@@ -352,6 +352,7 @@ const state = {
     ],
     activeTabId: 'tab-1',
     evaluationId: 'evalidtest',
+    evalResults: {},
     consoleLogCount: 0
 };
 
@@ -902,6 +903,7 @@ function renderTabs() {
             renderTabs();
             updateFormFromState();
             updateCurlDisplay();
+            if (typeof renderEvaluationResult === 'function') renderEvaluationResult();
         });
 
         if (state.testCases.length > 1) {
@@ -1244,111 +1246,29 @@ function runEvaluation() {
         clearInterval(timerInterval);
         const totalDuration = ((performance.now() - startTime) / 1000).toFixed(2);
         
-        els.resultsContent.innerHTML = '';
+        // Cache all evaluation results
+        if (data.evaluations) {
+            data.evaluations.forEach(e => {
+                state.evalResults[e.question_id] = e;
+            });
+        }
+        
+        renderEvaluationResult(totalDuration);
         
         const activeTab = state.testCases.find(t => t.id === state.activeTabId);
-        const evalResult = data.evaluations && data.evaluations.find(e => e.question_id === activeTab.questionId);
+        const evalResult = activeTab ? state.evalResults[activeTab.questionId] : null;
         
-        if (!evalResult) {
-            els.resultsContent.innerHTML = `
-                <div class="score-card bad">
-                    <div class="score-label">No Result Found</div>
-                    <div class="score bad"><strong>—</strong></div>
-                </div>
-                <div class="feedback-box negative">No result was returned for Question ID: <code>${activeTab.questionId}</code>. Check the Response tab for full payload.</div>
-            `;
-            showToast('No result found for this tab', 'info');
-        } else if (evalResult.status !== 'SUCCESS') {
-            els.resultsContent.innerHTML = `
-                <div class="score-card bad fade-in">
-                    <div class="result-status-row">
-                        <span class="badge danger">● Evaluation Failed</span>
-                        <span class="time-tag">${totalDuration}s</span>
-                    </div>
-                    <div class="score-label" style="color:var(--danger)">Error Encountered</div>
-                    <div class="score bad"><strong>0.0</strong> <span class="max-score">/ 10</span></div>
-                </div>
-                <div class="feedback-box negative fade-in">
-                    <strong>Error Details:</strong><br>
-                    ${evalResult.error || 'The model call failed to produce an evaluation.'}
-                </div>
-            `;
+        if (evalResult && evalResult.status === 'SUCCESS') {
+            const overallScore = Number(evalResult.review.individual_reviews[0].scores.overall_score || 0);
+            showToast(Evaluation completed in s (Score: ), overallScore >= 5 ? 'success' : 'info');
+        } else if (evalResult && evalResult.status !== 'SUCCESS') {
             showToast('Evaluation failed: ' + (evalResult.error || 'Unknown error'), 'error');
         } else {
-            const review = evalResult.review.individual_reviews[0];
-            const scores = review.scores;
-            const overallScore = Number(scores.overall_score !== undefined ? scores.overall_score : 0);
-            
-            const clone = els.resultsTemplate.content.cloneNode(true);
-            
-            // Score tier categorization
-            let scoreTier = 'good';
-            let badgeClass = 'badge success';
-            let badgeText = '● Passed';
-            let feedbackClass = 'feedback-box';
-            
-            if (overallScore < 5.0) {
-                scoreTier = 'bad';
-                badgeClass = 'badge danger';
-                badgeText = '● Needs Revision';
-                feedbackClass = 'feedback-box negative';
-            } else if (overallScore < 8.0) {
-                scoreTier = 'moderate';
-                badgeClass = 'badge warning';
-                badgeText = '● Partial Pass';
-                feedbackClass = 'feedback-box warning';
-            }
-            
-            // Status & Time
-            const statusBadge = clone.getElementById('eval-status-badge');
-            if (statusBadge) {
-                statusBadge.className = badgeClass;
-                statusBadge.textContent = badgeText;
-            }
-            const timeTag = clone.getElementById('eval-time-tag');
-            if (timeTag) timeTag.textContent = `${totalDuration}s`;
-            
-            // Score Card
-            const scoreCard = clone.getElementById('eval-score-card');
-            if (scoreCard) scoreCard.className = `score-card ${scoreTier}`;
-            
-            const scoreVal = clone.getElementById('eval-score-val');
-            if (scoreVal) {
-                scoreVal.className = `score ${scoreTier}`;
-                scoreVal.innerHTML = `<strong>${overallScore.toFixed(1)}</strong> <span class="max-score">/ 10</span>`;
-            }
-            
-            // Metrics helper
-            const setMetric = (valId, progId, value) => {
-                const valEl = clone.getElementById(valId);
-                const progEl = clone.getElementById(progId);
-                const num = Number(value || 0);
-                if (valEl) valEl.textContent = `${num.toFixed(1)}/10`;
-                if (progEl) {
-                    progEl.value = num;
-                    if (num < 5.0) progEl.className = 'metric-bad';
-                    else if (num < 8.0) progEl.className = 'metric-moderate';
-                    else progEl.className = 'metric-good';
-                }
-            };
-            
-            setMetric('metric-completeness-val', 'metric-completeness-prog', scores.completeness_score);
-            setMetric('metric-quality-val', 'metric-quality-prog', scores.code_quality_score);
-            setMetric('metric-approach-val', 'metric-approach-prog', scores.approach_taken_score);
-            
-            // Feedback
-            const feedbackEl = clone.getElementById('eval-feedback-text');
-            if (feedbackEl) {
-                feedbackEl.className = feedbackClass;
-                feedbackEl.textContent = review.correctness_feedback || "No feedback provided.";
-            }
-            
-            els.resultsContent.appendChild(clone);
-            showToast(`Evaluation completed in ${totalDuration}s (Score: ${overallScore.toFixed(1)})`, overallScore >= 5 ? 'success' : 'info');
+            showToast('No result found for this tab', 'info');
         }
         
         els.responseDisplay.textContent = JSON.stringify(data, null, 2);
-        logToConsole(`Evaluation completed in ${totalDuration}s using ${state.globalSettings.model}.`, 'info');
+        logToConsole(Evaluation completed in s using ., 'info');
     })
     .catch(err => {
         clearInterval(timerInterval);
@@ -1372,6 +1292,109 @@ function runEvaluation() {
         if (spinner) spinner.classList.add('hidden');
         if (btnText) btnText.textContent = '▶ Run Evaluation';
     });
+}
+
+
+function renderEvaluationResult(totalDuration = "—") {
+    els.resultsContent.innerHTML = '';
+    
+    const activeTab = state.testCases.find(t => t.id === state.activeTabId);
+    if (!activeTab) return;
+    
+    const evalResult = state.evalResults[activeTab.questionId];
+    
+    if (!evalResult) {
+        els.resultsContent.innerHTML = 
+            <div class="empty-state">
+                <div>Ready for evaluation</div>
+                <div class="empty-subtitle">No result found for Question ID: <code></code>. Run evaluation or load JSON.</div>
+            </div>
+        ;
+        return;
+    }
+    
+    if (evalResult.status !== 'SUCCESS') {
+        els.resultsContent.innerHTML = 
+            <div class="score-card bad fade-in">
+                <div class="result-status-row">
+                    <span class="badge danger">● Evaluation Failed</span>
+                    <span class="time-tag">s</span>
+                </div>
+                <div class="score-label" style="color:var(--danger)">Error Encountered</div>
+                <div class="score bad"><strong>0.0</strong> <span class="max-score">/ 10</span></div>
+            </div>
+            <div class="feedback-box negative fade-in">
+                <strong>Error Details:</strong><br>
+                
+            </div>
+        ;
+        return;
+    }
+    
+    const review = evalResult.review.individual_reviews[0];
+    const scores = review.scores;
+    const overallScore = Number(scores.overall_score !== undefined ? scores.overall_score : 0);
+    
+    const clone = els.resultsTemplate.content.cloneNode(true);
+    
+    let scoreTier = 'good';
+    let badgeClass = 'badge success';
+    let badgeText = '● Passed';
+    let feedbackClass = 'feedback-box';
+    
+    if (overallScore < 5.0) {
+        scoreTier = 'bad';
+        badgeClass = 'badge danger';
+        badgeText = '● Needs Revision';
+        feedbackClass = 'feedback-box negative';
+    } else if (overallScore < 8.0) {
+        scoreTier = 'moderate';
+        badgeClass = 'badge warning';
+        badgeText = '● Partial Pass';
+        feedbackClass = 'feedback-box warning';
+    }
+    
+    const statusBadge = clone.getElementById('eval-status-badge');
+    if (statusBadge) {
+        statusBadge.className = badgeClass;
+        statusBadge.textContent = badgeText;
+    }
+    const timeTag = clone.getElementById('eval-time-tag');
+    if (timeTag) timeTag.textContent = ${totalDuration}s;
+    
+    const scoreCard = clone.getElementById('eval-score-card');
+    if (scoreCard) scoreCard.className = score-card ;
+    
+    const scoreVal = clone.getElementById('eval-score-val');
+    if (scoreVal) {
+        scoreVal.className = score ;
+        scoreVal.innerHTML = <strong></strong> <span class="max-score">/ 10</span>;
+    }
+    
+    const setMetric = (valId, progId, value) => {
+        const valEl = clone.getElementById(valId);
+        const progEl = clone.getElementById(progId);
+        const num = Number(value || 0);
+        if (valEl) valEl.textContent = ${num.toFixed(1)}/10;
+        if (progEl) {
+            progEl.value = num;
+            if (num < 5.0) progEl.className = 'metric-bad';
+            else if (num < 8.0) progEl.className = 'metric-moderate';
+            else progEl.className = 'metric-good';
+        }
+    };
+    
+    setMetric('metric-completeness-val', 'metric-completeness-prog', scores.completeness_score);
+    setMetric('metric-quality-val', 'metric-quality-prog', scores.code_quality_score);
+    setMetric('metric-approach-val', 'metric-approach-prog', scores.approach_taken_score);
+    
+    const feedbackEl = clone.getElementById('eval-feedback-text');
+    if (feedbackEl) {
+        feedbackEl.className = feedbackClass;
+        feedbackEl.textContent = review.correctness_feedback || "No feedback provided.";
+    }
+    
+    els.resultsContent.appendChild(clone);
 }
 
 // Run init on load
